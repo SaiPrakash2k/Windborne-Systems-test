@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL Lines</title>
+    <style>
+        body, html {
+            margin: 0;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            border: 1px solid black;
+        }
+        input, button {
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <input id="lineWidth" type="number" min="1" max="10" value="1"> Line Width (px)
+    <button id="randomPointButton">Add Random Point</button>
+    <canvas id="glCanvas" width="800" height="600"></canvas>
+
+    <div>
+        <a href="https://github.com/SaiPrakash2k/Windborne-Systems-test">Check the code here</a>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('glCanvas');
+        const gl = canvas.getContext('webgl');
+        if (!gl) alert('WebGL not supported in this browser');
+        let lineWidth = 1;
+        let points = []; // Need to draw these points
+        
+        const vertexShaderSrc = `attribute vec2 coordinates; void main() { gl_Position = vec4(coordinates, 0.0, 1.0); }`;
+        const fragmentShaderSrc = `void main() { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); }`;
+        const shaderProgram = createProgram(gl, vertexShaderSrc, fragmentShaderSrc);
+        const coord = gl.getAttribLocation(shaderProgram, 'coordinates');
+        gl.enableVertexAttribArray(coord);
+
+        document.getElementById('lineWidth').addEventListener('input', (e) => {
+            lineWidth = parseInt(e.target.value);
+            drawScene();
+        });
+
+        document.getElementById('randomPointButton').addEventListener('click', () => {
+            const randomX = Math.random() * 2 - 1;
+            const randomY = Math.random() * 2 - 1;
+            points.push([randomX, randomY]);
+            drawScene();
+        });
+
+        canvas.addEventListener('click', (event) => {
+            const [x, y] = convertToWebGLCoords(event.clientX, event.clientY, canvas);
+            points.push([x, y]);
+            drawScene();
+        });
+
+        function convertToWebGLCoords(clientX, clientY, canvas) {
+            const rect = canvas.getBoundingClientRect();
+            const x = ((clientX - rect.left) / rect.width) * 2 - 1;
+            const y = ((rect.height - (clientY - rect.top)) / rect.height) * 2 - 1;
+            return [x, y];
+        }
+
+        function createProgram(gl, vertexSrc, fragmentSrc) {
+            const program = gl.createProgram();
+            const vs = compileShader(gl, gl.VERTEX_SHADER, vertexSrc);
+            const fs = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSrc);
+            gl.attachShader(program, vs);
+            gl.attachShader(program, fs);
+            gl.linkProgram(program);
+            gl.useProgram(program);
+            return program;
+        }
+
+        function compileShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                throw new Error(gl.getShaderInfoLog(shader));
+            }
+            return shader;
+        }
+
+        function drawScene() {
+            gl.clearColor(1.0, 1.0, 1.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            let flattened = points.flat()
+            if (points.length > 1) {
+                const buffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(flattened), gl.STATIC_DRAW);
+                gl.vertexAttribPointer(coord, 2, gl.FLOAT, false, 0, 0);
+                gl.lineWidth(lineWidth);
+                gl.drawArrays(gl.LINE_STRIP, 0, points.length);
+            }
+        }
+    </script>
+</body>
+</html>
